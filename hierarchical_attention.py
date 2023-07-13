@@ -81,7 +81,6 @@ class HierarchicalAttention(tf.keras.layers.Layer):
         mem_seq_attn_mat = tf.nn.softmax(self.attn_scale_factor_over_seqs * mem_seq_attn_mat, axis=1)
         # shape: [batch_size, mem_size, seq_len_batch]
         self.last_mem_seq_attn_mat = mem_seq_attn_mat
-        # TODO: add option for scaling constant
 
         # retrieve memory vector for each position in input sequence
         retrieved_mems = tf.einsum('bti,btik->bik', mem_seq_attn_mat, per_seq_retrieved_mems)
