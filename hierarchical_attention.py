@@ -148,7 +148,7 @@ class MultiHeadHierarchicalAttention(tf.keras.layers.Layer):
 
         self.head_concatenator = tf.keras.layers.Reshape((self.input_seq_len, self.value_dim * self.n_heads))
 
-    def call(self, inputs):
+    def call(self, inputs, return_attention_scores=False):
         input_seq, memory_x, memory_y = inputs
 
         queries = tf.stack([query_map(input_seq) for query_map in self.query_maps], axis=-1)
@@ -184,4 +184,7 @@ class MultiHeadHierarchicalAttention(tf.keras.layers.Layer):
         retrieved_mems = self.head_concatenator(retrieved_mems)
         # shape: [batch_size, input_seq_len, embedding_dim * n_heads]
 
-        return retrieved_mems
+        if return_attention_scores:
+            return retrieved_mems, mem_seq_attn_mat, per_seq_attn_mat, attn_mat
+        else:
+            return retrieved_mems
