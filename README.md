@@ -1,2 +1,2 @@
-# hierarchical-attention-external-memory
-Hierarchical attention mechanisms for external memory in machine learning models.
+# kernel-attention-external-memory
+Kernel idea in attention mechanisms for external memory in machine learning models.
