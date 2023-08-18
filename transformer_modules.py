@@ -129,19 +129,23 @@ def create_positional_encoding(length, depth):
 
 
 class AddPositionalEmbedding(tf.keras.layers.Layer):
-    def __init__(self, name="add_positional_embedding"):
+    def __init__(self, max_length=1024, name="add_positional_embedding"):
         super().__init__(name=name)
+        self.max_length = max_length
 
     def build(self, input_shape):
         _, self.seq_length, self.vec_dim = input_shape
-        self.pos_encoding = create_positional_encoding(length=self.seq_length, depth=self.vec_dim)
+        self.max_length = max(self.max_length, self.seq_length)
+        self.pos_encoding = create_positional_encoding(length=self.max_length, depth=self.vec_dim)
 
     def call(self, x):
+        length = tf.shape(x)[1]
+
         # This factor sets the relative scale of the embedding and positonal_encoding.
         x *= tf.math.sqrt(tf.cast(self.vec_dim, tf.float32))
 
         # add positional encoding
-        x = x + self.pos_encoding[tf.newaxis, :, :]
+        x = x + self.pos_encoding[tf.newaxis, :length, :]
 
         return x
 
