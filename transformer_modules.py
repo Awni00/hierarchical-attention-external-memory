@@ -163,7 +163,7 @@ class MemoryAddPositionalEmbedding(tf.keras.layers.Layer):
     def call(self, x):
         length = tf.shape(x)[2]
 
-# This factor sets the relative scale of the embedding and positonal_encoding.
+        # This factor sets the relative scale of the embedding and positonal_encoding.
         x *= tf.math.sqrt(tf.cast(self.vec_dim, tf.float32))
 
         # add positional encoding
