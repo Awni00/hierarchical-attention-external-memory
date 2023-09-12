@@ -36,3 +36,24 @@ def plot_attention(sample_input_index, seqs_x_train, seqs_y_train, mem_seqs_x_tr
     attn_ = memory_model.alpha_it[0]
     #print(attn_output_seq.shape)
     plot_seq_attention(attn_, sample_mem_seq_x[0], sample_input[0])
+
+
+def plot_attention_cross_y(sample_input_index, seqs_x_train, seqs_y_train, mem_seqs_x_train, mem_seqs_y_train, memory_model):
+    """
+    choose sample input and plot the attention associated to the argmax probability vocab at each input position 
+    (memory_seq versus each input element), call plot_seq_attention as subfunction
+    """
+    b = sample_input_index
+    sample_input = seqs_x_train[b:b+1]
+    print("sample_input: ",sample_input)
+    sample_mem_seq_x = mem_seqs_x_train[b:b+1]
+    sample_mem_seq_y = mem_seqs_y_train[b:b+1]
+
+    pred = memory_model([sample_input, sample_mem_seq_x, sample_mem_seq_y])
+    pred = np.argmax(pred, axis=-1)
+    print(f'prediction: {pred[0]}')
+    print(f'y: {seqs_y_train[b]}')
+    print(pred[0] == seqs_y_train[b])
+    attn_ = memory_model.alpha_it[0]
+    #print(attn_output_seq.shape)
+    plot_seq_attention(attn_, sample_mem_seq_x[0], sample_input[0])
