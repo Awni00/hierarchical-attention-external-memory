@@ -4,7 +4,7 @@ from tensorflow.keras import layers
 
 class HierarchicalAttention(tf.keras.layers.Layer):
 
-    def __init__(self, key_dim, value_dim=None,
+    def __init__(self, key_dim, value_dim=None, symmetric_kernel=False,
         attn_scale_factor_per_seq=None, attn_scale_factor_over_seqs=None,
         dense_kwargs=None, **kwargs):
         """create HierarchicalAttention layer.
@@ -23,6 +23,8 @@ class HierarchicalAttention(tf.keras.layers.Layer):
             dimension of keys and queries.
         value_dim : int, optional
             dimension of value projection if different from embedding dimension, by default None
+        symmetric_kernel: boolean, optional
+            whether to restrict query_dense and key_dense to be the same, by default False
         attn_scale_factor_per_seq : float, optional
             the scale factor for the within-sequence attention, by default None
         attn_scale_factor_over_seqs : float, optional
@@ -34,6 +36,7 @@ class HierarchicalAttention(tf.keras.layers.Layer):
         super(HierarchicalAttention, self).__init__(**kwargs)
         self.key_dim = key_dim
         self.value_dim = value_dim
+        self.symmetric_kernel = symmetric_kernel
         self.attn_scale_factor_per_seq = attn_scale_factor_per_seq
         if self.attn_scale_factor_per_seq is None:
             self.attn_scale_factor_per_seq = 1 / np.sqrt(self.key_dim)
@@ -49,7 +52,11 @@ class HierarchicalAttention(tf.keras.layers.Layer):
         input_seq_shape, input_mem_x_shape, input_mem_y_shape = input_shape
 
         self.query_dense = layers.Dense(self.key_dim, **self.dense_kwargs)
-        self.key_dense = layers.Dense(self.key_dim, **self.dense_kwargs)
+
+        if self.symmetric_kernel:
+            self.key_dense = self.query_dense
+        else:
+            self.key_dense = layers.Dense(self.key_dim, **self.dense_kwargs)
         if self.value_dim is None:
             self.value_dim = input_mem_y_shape[-1]
         self.value_dense = layers.Dense(self.value_dim, **self.dense_kwargs)
@@ -87,10 +94,10 @@ class HierarchicalAttention(tf.keras.layers.Layer):
         # shape: [batch_size, seq_len_batch, value_dim]
 
         return retrieved_mems
-    
+
 class MultiHeadHierarchicalAttention(tf.keras.layers.Layer):
 
-    def __init__(self, key_dim, value_dim=None, n_heads=1,
+    def __init__(self, key_dim, value_dim=None, n_heads=1, symmetric_kernel=False,
         attn_scale_factor_per_seq=None, attn_scale_factor_over_seqs=None,
         dense_kwargs=None, **kwargs):
         """create HierarchicalAttention layer.
@@ -109,6 +116,8 @@ class MultiHeadHierarchicalAttention(tf.keras.layers.Layer):
             dimension of keys and queries.
         value_dim : int, optional
             dimension of value projection if different from embedding dimension, by default None
+        symmetric_kernel: boolean, optional
+            whether to restrict query_dense and key_dense to be the same, by default False
         n_heads : int, optional
             number of attention heads, by default 1
         attn_scale_factor_per_seq : float, optional
@@ -122,6 +131,7 @@ class MultiHeadHierarchicalAttention(tf.keras.layers.Layer):
         super(MultiHeadHierarchicalAttention, self).__init__(**kwargs)
         self.key_dim = key_dim
         self.value_dim = value_dim
+        self.symmetric_kernel = symmetric_kernel
         self.n_heads = n_heads
         self.attn_scale_factor_per_seq = attn_scale_factor_per_seq
         if self.attn_scale_factor_per_seq is None:
@@ -141,7 +151,12 @@ class MultiHeadHierarchicalAttention(tf.keras.layers.Layer):
         _, _, _, d_my = input_mem_y_shape
 
         self.query_maps = [layers.Dense(self.key_dim, **self.dense_kwargs) for _ in range(self.n_heads)]
-        self.key_maps = [layers.Dense(self.key_dim, **self.dense_kwargs) for _ in range(self.n_heads)]
+
+        if self.symmetric_kernel:
+            self.key_maps = self.query_maps
+        else:
+            self.key_maps = [layers.Dense(self.key_dim, **self.dense_kwargs) for _ in range(self.n_heads)]
+
         if self.value_dim is None:
             self.value_dim = d_my // self.n_heads
         self.value_maps = [layers.Dense(self.value_dim, **self.dense_kwargs) for _ in range(self.n_heads)]
@@ -168,7 +183,7 @@ class MultiHeadHierarchicalAttention(tf.keras.layers.Layer):
         # retrieved memory vector for each position in input sequence for each sequence in memory
         per_seq_retrieved_mems = tf.einsum('btijh,btjkh->btikh', per_seq_attn_mat, values)
         # [batch_size, mem_size, seq_len_batch, embedding_dim, n_heads]
-        
+
         # attend *over* memory sequences (i.e., select relevant memory sequences)
         mem_seq_attn_mat = tf.reduce_max(attn_mat, axis=-2)
         # softmax along mem_size axis
