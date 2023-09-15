@@ -19,6 +19,8 @@ class Attention(tf.keras.layers.Layer):
         self.query_transform = layers.Dense(self.key_dim)
         if self.symmetric_attention:
             self.key_transform = self.query_transform
+            #self.value_transform = self.query_transform
+
         else:
             self.key_transform = layers.Dense(self.key_dim)
         self.value_transform = layers.Dense(self.value_dim)
@@ -35,11 +37,11 @@ class Attention(tf.keras.layers.Layer):
 
 
     def call(self, query, key, value, use_causal_mask=False, return_attention_scores=False):
+        #print("in mha,", query.shape, key.shape, value.shape)
         if use_causal_mask:
             mask = self._compute_causal_mask(query, value)
         else:
             mask=None
-
         query = self.query_transform(query)
         key = self.key_transform(key)
         value = self.value_transform(value)

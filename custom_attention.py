@@ -51,9 +51,12 @@ class CausalSelfAttention(BaseAttention):
 
 
 class CrossAttention(BaseAttention):
-    def call(self, x, context):
+    def call(self, x, context, y=None):
+        # y is defaulted to be None (CrossAttn value = context)
+        if y is None:
+            y = context
         attn_output, attn_scores = self.mha(
-            query=x, key=context, value=context, return_attention_scores=True
+            query=x, key=context, value=y, return_attention_scores=True
         )
 
         # Cache the attention scores for plotting later.

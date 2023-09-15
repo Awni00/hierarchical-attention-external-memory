@@ -1,16 +1,10 @@
 import tensorflow as tf
 from tensorflow.keras import layers
 from transformer_modules import AddPositionalEmbedding, MemoryAddPositionalEmbedding
-from attention import GlobalSelfAttention, CausalSelfAttention, CrossAttention, MultiHeadAttention
+from attention import GlobalSelfAttention, CausalSelfAttention, CrossAttention
 
 class KernelMemoryTransformer(tf.keras.Model):
-    def __init__(self, vocab_size, embedding_dim, key_dim, symmetric_attention=False, n_heads, ff_sizes, **kwargs):
-        
-        """
-        symmetric_attention： boolean，optional
-            whether to make kernel quasi symmetric, by default False  
-        """
-
+    def __init__(self, vocab_size, embedding_dim, key_dim, n_heads, ff_sizes, **kwargs):
         super().__init__(**kwargs)
 
         self.alpha_it = None
@@ -20,14 +14,10 @@ class KernelMemoryTransformer(tf.keras.Model):
 
         # different self-attention layers for input and memories for encoding sequences
         self.input_self_attention = CausalSelfAttention(num_heads=n_heads, key_dim=key_dim, value_dim=embedding_dim//n_heads, name='self_attn')
-        if symmetric_attention:
-            self.memory_self_attention_layer = self.self_attention_layer
-        else:
-            self.memory_self_attention_layer = GlobalSelfAttention(num_heads=n_heads, key_dim=key_dim, name='mem_self_attn')
-
+        self.memory_self_attention_layer = GlobalSelfAttention(num_heads=n_heads, key_dim=key_dim, value_dim=embedding_dim//n_heads, name='mem_self_attn')
 
         # create cross attention layer
-        self.cross_attention_layer = MultiHeadAttention(num_heads=n_heads, key_dim=key_dim, value_dim=embedding_dim//n_heads, name='cross_attn')
+        self.cross_attention_layer = CrossAttention(num_heads=n_heads, key_dim=key_dim, value_dim=embedding_dim//n_heads, name='cross_attn')
 
         self.feedforward = tf.keras.Sequential([layers.Dense(z, activation='relu') for z in ff_sizes], name='feedforward')
         self.output_dense = layers.Dense(vocab_size, activation='softmax', name='output')
@@ -95,8 +85,7 @@ class KernelMemoryTransformer(tf.keras.Model):
 
         # compute alpha_it = softmax(w_it) where w_it = sum_{j=1}^{i-1} log prob(x_{j+1} | x_{1:j}, x^{(t)})
         alpha_it = self.compute_mem_attention_scores(cross_probs_observed)
-        self.alpha_it = alpha_it
-        
+
         # compute prob(x_{i+1} | x_{1:i}, {x^{(t)}}_t) = \sum_t alpha_it * prob(x_{i+1} = . | x_{1:i}, x^{(t)})
         output = tf.reduce_sum(tf.multiply(tf.expand_dims(alpha_it, axis=-1), cross_probs), axis=1)
 
