@@ -1,0 +1,89 @@
+import os
+import tensorflow as tf
+import tensorflow_datasets as tfds
+import numpy as np
+
+
+def create_vectorizers(source, target, save_path=None):
+    command_vectorizer = tf.keras.layers.TextVectorization(split='whitespace', output_mode='int', standardize=None)
+    action_vectorizer = tf.keras.layers.TextVectorization(split='whitespace', output_mode='int', standardize=None)
+
+    command_vectorizer.adapt(source)
+    action_vectorizer.adapt(target)
+
+    if save_path is not None:
+        save_vocab(command_vectorizer, save_path + '/commands')
+        save_vocab(action_vectorizer, save_path + '/actions')
+
+    return command_vectorizer, action_vectorizer
+
+def load_vectorizers(path):
+    command_vectorizer = tf.keras.layers.TextVectorization(split='whitespace', output_mode='int', standardize=None)
+    action_vectorizer = tf.keras.layers.TextVectorization(split='whitespace', output_mode='int', standardize=None)
+
+    command_vectorizer.load_assets(f'{path}/commands')
+    action_vectorizer.load_assets(f'{path}/actions')
+
+    return command_vectorizer, action_vectorizer
+
+def invert_seq_vector(sequence, vectorizer):
+    vocab = np.array(vectorizer.get_vocabulary())
+    seq = list(vocab[sequence])
+    seq = ' '.join(seq)
+    return seq
+
+def save_vocab(vectorizer, path):
+    if not os.path.exists(path):
+        os.mkdir(path)
+    vectorizer.save_assets(path)
+
+def load_scan_ds(split):
+
+    # load data
+    data = tfds.load(f'scan/{split}', as_supervised=True)
+    train_ds = data['train']
+    test_ds = data['test']
+
+    # add start and end tokens to target sequence
+    def add_start_eos_token(text):
+        return "<START> " + text + " <END>"
+
+    train_ds = train_ds.map(lambda x, y: (x, add_start_eos_token(y)))
+    test_ds = test_ds.map(lambda x, y: (x, add_start_eos_token(y)))
+
+    # load vectorizers
+    command_vectorizer, action_vectorizer = load_vectorizers(f'text_vectorizer_vocabs/{split}')
+
+    # unravel dataset into numpy arrays
+    source_train, target_train = unravel_ds(train_ds)
+    source_test, target_test = unravel_ds(test_ds)
+
+    # tokenize and create label
+    tokenized_source_train = command_vectorizer(source_train)
+    tokenized_target_train = action_vectorizer(target_train)
+    tokenized_label_train = tokenized_target_train[:, 1:]
+    tokenized_target_train = tokenized_target_train[:, :-1]
+
+    tokenized_source_test = command_vectorizer(source_test)
+    tokenized_target_test = action_vectorizer(target_test)
+    tokenized_label_test = tokenized_target_test[:, 1:]
+    tokenized_target_test = tokenized_target_test[:, :-1]
+
+    # create tf dataset
+    train_ds = tf.data.Dataset.from_tensor_slices(((tokenized_source_train, tokenized_target_train), tokenized_label_train))
+    test_ds = tf.data.Dataset.from_tensor_slices(((tokenized_source_test, tokenized_target_test), tokenized_label_test))
+
+    return train_ds, test_ds, command_vectorizer, action_vectorizer
+
+def unravel_ds(ds, format='s,t'):
+    if format == 's,t':
+        source = np.array([x.numpy() for x, y in ds])
+        target = np.array([y.numpy() for x, y in ds])
+
+        return source, target
+
+    elif format =='s,t,l':
+        source = np.array([x.numpy() for (x, y), z in ds])
+        target = np.array([y.numpy() for (x, y), z in ds])
+        label = np.array([z.numpy() for (x, y), z in ds])
+        return source, target, label
