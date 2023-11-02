@@ -5,11 +5,12 @@ import tensorflow as tf
 from attention import GlobalSelfAttention, CausalSelfAttention, CrossAttention
 
 class Encoder(tf.keras.layers.Layer):
-    def __init__(self, num_layers, num_heads, dff, dropout_rate=0.1, name="encoder"):
+    def __init__(self, num_layers, num_heads, dff, layernorm_first=True, dropout_rate=0.1, name="encoder"):
         super().__init__(name=name)
         self.num_layers = num_layers
         self.num_heads = num_heads
         self.dff = dff
+        self.layernorm_first = layernorm_first
         self.dropout_rate = dropout_rate
 
     def build(self, input_shape):
@@ -20,6 +21,7 @@ class Encoder(tf.keras.layers.Layer):
                 d_model=self.d_model,
                 num_heads=self.num_heads,
                 dff=self.dff,
+                layernorm_first=self.layernorm_first,
                 dropout_rate=self.dropout_rate,
             )
             for _ in range(self.num_layers)
@@ -37,14 +39,14 @@ class Encoder(tf.keras.layers.Layer):
 
 
 class EncoderLayer(tf.keras.layers.Layer):
-    def __init__(self, *, d_model, num_heads, dff, dropout_rate=0.1):
+    def __init__(self, *, d_model, num_heads, dff, layernorm_first=True, dropout_rate=0.1):
         super().__init__()
 
         self.self_attention = GlobalSelfAttention(
-            num_heads=num_heads, key_dim=d_model, dropout=dropout_rate
+            num_heads=num_heads, key_dim=d_model, layernorm_first=layernorm_first, dropout=dropout_rate
         )
 
-        self.ffn = FeedForward(d_model, dff)
+        self.ffn = FeedForward(d_model, dff, layernorm_first=layernorm_first)
 
     def call(self, x):
         x = self.self_attention(x)
@@ -53,12 +55,13 @@ class EncoderLayer(tf.keras.layers.Layer):
 
 
 class Decoder(tf.keras.layers.Layer):
-    def __init__(self, num_layers, num_heads, dff, dropout_rate=0.1, name="decoder"):
+    def __init__(self, num_layers, num_heads, dff, layernorm_first=True, dropout_rate=0.1, name="decoder"):
         super(Decoder, self).__init__(name=name)
 
         self.num_layers = num_layers
         self.num_heads = num_heads
         self.dff = dff
+        self.layernorm_first = layernorm_first
         self.dropout_rate = dropout_rate
 
     def build(self, input_shape):
@@ -71,6 +74,7 @@ class Decoder(tf.keras.layers.Layer):
                 d_model=self.d_model,
                 num_heads=self.num_heads,
                 dff=self.dff,
+                layernorm_first=self.layernorm_first,
                 dropout_rate=self.dropout_rate,
             )
             for _ in range(self.num_layers)
@@ -90,18 +94,18 @@ class Decoder(tf.keras.layers.Layer):
 
 
 class DecoderLayer(tf.keras.layers.Layer):
-    def __init__(self, *, d_model, num_heads, dff, dropout_rate=0.1):
+    def __init__(self, *, d_model, num_heads, dff, layernorm_first=True, dropout_rate=0.1):
         super(DecoderLayer, self).__init__()
 
         self.causal_self_attention = CausalSelfAttention(
-            num_heads=num_heads, key_dim=d_model, dropout=dropout_rate
+            num_heads=num_heads, key_dim=d_model, layernorm_first=layernorm_first, dropout=dropout_rate
         )
 
         self.cross_attention = CrossAttention(
-            num_heads=num_heads, key_dim=d_model, dropout=dropout_rate
+            num_heads=num_heads, key_dim=d_model, layernorm_first=layernorm_first, dropout=dropout_rate
         )
 
-        self.ffn = FeedForward(d_model, dff)
+        self.ffn = FeedForward(d_model, dff, layernorm_first=layernorm_first)
 
     def call(self, x, context):
         x = self.causal_self_attention(x=x)
@@ -173,7 +177,7 @@ class MemoryAddPositionalEmbedding(tf.keras.layers.Layer):
 
 
 class FeedForward(tf.keras.layers.Layer):
-    def __init__(self, d_model, dff, dropout_rate=0.1):
+    def __init__(self, d_model, dff, layernorm_first=True, dropout_rate=0.1):
         super().__init__()
         self.seq = tf.keras.Sequential(
             [
@@ -183,11 +187,15 @@ class FeedForward(tf.keras.layers.Layer):
             ]
         )
         self.add = tf.keras.layers.Add()
+        self.layernorm_first = layernorm_first
         self.layer_norm = tf.keras.layers.LayerNormalization()
 
     def call(self, x):
-        x = self.add([x, self.seq(x)])
-        x = self.layer_norm(x)
+        if self.layernorm_first:
+            x = self.add([x, self.seq(self.layer_norm(x))])
+        else:
+            x = self.add([x, self.seq(x)])
+            x = self.layer_norm(x)
         return x
 
 
