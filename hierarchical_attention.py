@@ -149,6 +149,8 @@ class MultiHeadHierarchicalAttention(tf.keras.layers.Layer):
         _, self.input_seq_len, d_in = input_seq_shape
         _, self.mem_size, self.mem_seq_len, d_mx = input_mem_x_shape
         _, _, _, d_my = input_mem_y_shape
+        if d_in != d_mx and self.symmetric_kernel:
+            raise ValueError('d_in != d_mx but symmetric_kernel=True')
 
         self.query_maps = [layers.Dense(self.key_dim, **self.dense_kwargs) for _ in range(self.n_heads)]
 
@@ -159,6 +161,8 @@ class MultiHeadHierarchicalAttention(tf.keras.layers.Layer):
 
         if self.value_dim is None:
             self.value_dim = d_my // self.n_heads
+        if self.value_dim * self.n_heads != d_my:
+            print(f'WARNING value_dim ({self.value_dim}) * n_heads ({self.n_heads}) != d_my ({d_my})')
         self.value_maps = [layers.Dense(self.value_dim, **self.dense_kwargs) for _ in range(self.n_heads)]
 
         self.head_concatenator = tf.keras.layers.Reshape((self.input_seq_len, self.value_dim * self.n_heads))
