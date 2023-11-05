@@ -39,11 +39,14 @@ class Encoder(tf.keras.layers.Layer):
 
 
 class EncoderLayer(tf.keras.layers.Layer):
-    def __init__(self, *, d_model, num_heads, dff, layernorm_first=True, dropout_rate=0.1):
+    def __init__(self, *, d_model, num_heads, dff, key_dim=None, layernorm_first=True, dropout_rate=0.1):
         super().__init__()
 
+        if key_dim is None:
+            key_dim = d_model
+
         self.self_attention = GlobalSelfAttention(
-            num_heads=num_heads, key_dim=d_model, layernorm_first=layernorm_first, dropout=dropout_rate
+            num_heads=num_heads, key_dim=key_dim, layernorm_first=layernorm_first, dropout=dropout_rate
         )
 
         self.ffn = FeedForward(d_model, dff, layernorm_first=layernorm_first)
@@ -94,15 +97,18 @@ class Decoder(tf.keras.layers.Layer):
 
 
 class DecoderLayer(tf.keras.layers.Layer):
-    def __init__(self, *, d_model, num_heads, dff, layernorm_first=True, dropout_rate=0.1):
+    def __init__(self, *, d_model, num_heads, dff, key_dim=None, layernorm_first=True, dropout_rate=0.1):
         super(DecoderLayer, self).__init__()
 
+        if key_dim is None:
+            key_dim = d_model
+
         self.causal_self_attention = CausalSelfAttention(
-            num_heads=num_heads, key_dim=d_model, layernorm_first=layernorm_first, dropout=dropout_rate
+            num_heads=num_heads, key_dim=key_dim, layernorm_first=layernorm_first, dropout=dropout_rate
         )
 
         self.cross_attention = CrossAttention(
-            num_heads=num_heads, key_dim=d_model, layernorm_first=layernorm_first, dropout=dropout_rate
+            num_heads=num_heads, key_dim=key_dim, layernorm_first=layernorm_first, dropout=dropout_rate
         )
 
         self.ffn = FeedForward(d_model, dff, layernorm_first=layernorm_first)
