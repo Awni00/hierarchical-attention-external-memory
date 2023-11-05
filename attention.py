@@ -16,7 +16,8 @@ class BaseAttention(tf.keras.layers.Layer):
         self.use_residual = use_resiudal
 
         self.layernorm = tf.keras.layers.LayerNormalization()
-        if self.use_residual: self.add = tf.keras.layers.Add()
+        if self.use_residual:
+            self.add = tf.keras.layers.Add()
 
     def add_residual(self, x, attn_output):
         if self.use_residual:
