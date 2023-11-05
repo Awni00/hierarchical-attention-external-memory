@@ -75,6 +75,28 @@ def load_scan_ds(split):
 
     return train_ds, test_ds, command_vectorizer, action_vectorizer
 
+def sample_memory_buffer(input_seqs, target_seqs, n_mems):
+    '''given input, target seqs, sample n_mems for each training example'''
+
+    n = len(input_seqs)
+    assert n == len(target_seqs)
+    sample = np.array([np.random.choice(n, n_mems) for _ in range(n)])
+    input_mem_seqs = tf.gather(input_seqs, sample, axis=0)
+    target_mem_seqs = tf.gather(target_seqs, sample, axis=0)
+
+    return input_mem_seqs, target_mem_seqs
+
+def create_memory_ds(train_ds, n_mems):
+    '''
+    given input, target, label seqs in tf dataset, sample memory buffer
+    for each training example and create new dataset including memories
+    '''
+
+    input_seqs, target_seqs, label_seqs = unravel_ds(train_ds, format='s,t,l')
+    input_mem_seqs, target_mem_seqs = sample_memory_buffer(input_seqs, target_seqs, n_mems=n_mems)
+    mem_train_ds = tf.data.Dataset.from_tensor_slices((((input_seqs, target_seqs), (input_mem_seqs, target_mem_seqs)), label_seqs))
+    return mem_train_ds
+
 def unravel_ds(ds, format='s,t'):
     if format == 's,t':
         source = np.array([x.numpy() for x, y in ds])
