@@ -5,8 +5,8 @@ import tensorflow as tf
 from attention import GlobalSelfAttention, CausalSelfAttention, CrossAttention
 
 class Encoder(tf.keras.layers.Layer):
-    def __init__(self, num_layers, num_heads, dff, layernorm_first=True, dropout_rate=0.1, name="encoder"):
-        super().__init__(name=name)
+    def __init__(self, num_layers, num_heads, dff, layernorm_first=True, dropout_rate=0.1, **kwargs):
+        super().__init__(**kwargs)
         self.num_layers = num_layers
         self.num_heads = num_heads
         self.dff = dff
@@ -58,8 +58,8 @@ class EncoderLayer(tf.keras.layers.Layer):
 
 
 class Decoder(tf.keras.layers.Layer):
-    def __init__(self, num_layers, num_heads, dff, layernorm_first=True, dropout_rate=0.1, name="decoder"):
-        super(Decoder, self).__init__(name=name)
+    def __init__(self, num_layers, num_heads, dff, layernorm_first=True, dropout_rate=0.1, **kwargs):
+        super(Decoder, self).__init__(**kwargs)
 
         self.num_layers = num_layers
         self.num_heads = num_heads
@@ -97,8 +97,8 @@ class Decoder(tf.keras.layers.Layer):
 
 
 class DecoderLayer(tf.keras.layers.Layer):
-    def __init__(self, *, d_model, num_heads, dff, key_dim=None, layernorm_first=True, dropout_rate=0.1):
-        super(DecoderLayer, self).__init__()
+    def __init__(self, *, d_model, num_heads, dff, key_dim=None, layernorm_first=True, dropout_rate=0.1, **kwargs):
+        super(DecoderLayer, self).__init__(**kwargs)
 
         if key_dim is None:
             key_dim = d_model
@@ -139,8 +139,8 @@ def create_positional_encoding(length, depth):
 
 
 class AddPositionalEmbedding(tf.keras.layers.Layer):
-    def __init__(self, max_length=1024, name="add_positional_embedding"):
-        super().__init__(name=name)
+    def __init__(self, max_length=1024, **kwargs):
+        super().__init__(**kwargs)
         self.max_length = max_length
 
     def build(self, input_shape):
@@ -160,8 +160,8 @@ class AddPositionalEmbedding(tf.keras.layers.Layer):
         return x
 
 class MemoryAddPositionalEmbedding(tf.keras.layers.Layer):
-    def __init__(self, max_length=1024, name="add_positional_embedding"):
-        super().__init__(name=name)
+    def __init__(self, max_length=1024, **kwargs):
+        super().__init__(**kwargs)
         self.max_length = max_length
 
     def build(self, input_shape):
@@ -183,8 +183,8 @@ class MemoryAddPositionalEmbedding(tf.keras.layers.Layer):
 
 
 class FeedForward(tf.keras.layers.Layer):
-    def __init__(self, d_model, dff, layernorm_first=True, dropout_rate=0.1):
-        super().__init__()
+    def __init__(self, d_model, dff, layernorm_first=True, dropout_rate=0.1, **kwargs):
+        super().__init__(**kwargs)
         self.seq = tf.keras.Sequential(
             [
                 tf.keras.layers.Dense(dff, activation="relu"),
