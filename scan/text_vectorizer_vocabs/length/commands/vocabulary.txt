@@ -1,0 +1,15 @@
+
+[UNK]
+right
+left
+twice
+opposite
+thrice
+and
+after
+around
+walk
+run
+look
+jump
+turn
