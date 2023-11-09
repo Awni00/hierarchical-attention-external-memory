@@ -3,6 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# jobs
+*.out
+
+# model checkpoints
+*/model_checkpoints
+
 # C extensions
 *.so
 
