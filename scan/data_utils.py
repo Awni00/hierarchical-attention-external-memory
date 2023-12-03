@@ -26,10 +26,12 @@ def load_vectorizers(path):
 
     return command_vectorizer, action_vectorizer
 
-def invert_seq_vector(sequence, vectorizer):
+def invert_seq_vector(sequence, vectorizer, join=True):
     vocab = np.array(vectorizer.get_vocabulary())
-    seq = list(vocab[sequence])
-    seq = ' '.join(seq)
+    seq = vocab[sequence]
+    if join:
+        seq = list(seq)
+        seq = ' '.join(seq)
     return seq
 
 def save_vocab(vectorizer, path):
